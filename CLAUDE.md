@@ -8,28 +8,28 @@ This file documents conventions, workflows, and key information for AI assistant
 
 **Repository:** `tzigerlig/wm-b-rse`
 
-> This repository was initialized empty. Update this section once the project purpose, tech stack, and structure are established.
+**WM-Börse** is a World Cup 2026 prediction market platform where users can trade positions on match outcomes, group standings, and tournament progression.
 
 ---
 
 ## Project Structure
 
-> Populate this section as the codebase grows. Example structure to follow:
-
 ```
 /
-├── src/           # Application source code
-├── tests/         # Test suites
-├── docs/          # Documentation
-├── scripts/       # Build and utility scripts
-└── CLAUDE.md      # This file
+├── wm2026-boerse/     # Full-stack Next.js 16 app (primary project)
+│   ├── src/app/       # App Router pages, layouts, API routes
+│   ├── public/        # Static assets
+│   └── CLAUDE.md      # Subproject-specific docs (read this too)
+└── CLAUDE.md          # This file (repo-level conventions)
 ```
+
+**Each subdirectory has its own CLAUDE.md.** Read the subproject CLAUDE.md before working in that directory.
 
 ---
 
 ## Development Branch
 
-All AI-assisted changes should be developed on feature branches. The convention used by Claude Code sessions is:
+All AI-assisted changes must be developed on feature branches. The convention used by Claude Code sessions is:
 
 - Branch pattern: `claude/<description>-<id>`
 - Example: `claude/claude-md-docs-qkikr`
@@ -64,8 +64,6 @@ git push -u origin <branch-name>
 
 ## Code Conventions
 
-> Update these when a language/framework is chosen.
-
 ### General
 - Keep functions small and focused on a single responsibility.
 - Write self-documenting code with clear naming; avoid comments that restate what the code does.
@@ -84,6 +82,7 @@ git push -u origin <branch-name>
 
 ### What to do
 - Read existing code before editing to understand patterns already in use.
+- Read the subproject CLAUDE.md for framework-specific rules (e.g., Next.js 16 breaking changes).
 - Match the style and idioms of the surrounding code.
 - Make the smallest change that correctly solves the task.
 - Commit with a clear message explaining the **why**, not the what.
@@ -105,18 +104,18 @@ git push -u origin <branch-name>
 
 ## Commands
 
-> Add project-specific commands here as the project grows.
+All commands must be run from within the subproject directory.
 
-| Command | Description |
-|---------|-------------|
-| _(none yet)_ | _(populate when build/test/lint scripts are added)_ |
+| Command | Directory | Description |
+|---------|-----------|-------------|
+| `npm run dev` | `wm2026-boerse/` | Start dev server on port 3000 |
+| `npm run build` | `wm2026-boerse/` | Production build |
+| `npm run lint` | `wm2026-boerse/` | Run ESLint |
 
 ---
 
 ## Updating This File
 
-Keep CLAUDE.md current as the project evolves:
-- Add the tech stack and project purpose once decided.
-- Document commands as scripts are added (`npm test`, `make build`, etc.).
-- Update the project structure diagram when major directories are added.
-- Add language/framework-specific conventions when the stack is chosen.
+- Add new subprojects to the **Project Structure** diagram when they are created.
+- Document new top-level commands in the **Commands** table.
+- Each subproject maintains its own CLAUDE.md for framework/language-specific detail.
