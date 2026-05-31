@@ -1,11 +1,44 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
+type Mode = 'login' | 'register'
+
+const ERRORS: Record<string, string> = {
+  'Invalid login credentials':    'E-Mail oder Passwort falsch.',
+  'Email not confirmed':          'E-Mail-Adresse noch nicht bestätigt.',
+  'User already registered':      'Diese E-Mail ist bereits registriert.',
+  'Password should be at least 6 characters': 'Passwort muss mindestens 6 Zeichen lang sein.',
+  'Unable to validate email address: invalid format': 'Ungültige E-Mail-Adresse.',
+  'signup is disabled':           'Registrierung ist momentan deaktiviert.',
+  'email rate limit exceeded':    'Zu viele Versuche. Bitte warte kurz.',
+}
+
+function translateError(msg: string): string {
+  for (const [key, val] of Object.entries(ERRORS)) {
+    if (msg.toLowerCase().includes(key.toLowerCase())) return val
+  }
+  return msg
+}
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 12,
+  color: 'var(--text-dim)',
+  marginBottom: 8,
+  fontWeight: 600,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+}
+
 export default function LoginPage() {
+  const router = useRouter()
+  const [mode, setMode] = useState<Mode>('login')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -15,20 +48,50 @@ export default function LoginPage() {
     setError('')
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
 
-    setLoading(false)
-    if (error) {
-      setError(error.message)
+    if (mode === 'login') {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setError(translateError(error.message))
+        setLoading(false)
+      } else {
+        router.push('/home')
+      }
     } else {
-      setSent(true)
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name: name.trim() || email.split('@')[0] } },
+      })
+
+      if (error) {
+        setError(translateError(error.message))
+        setLoading(false)
+        return
+      }
+
+      // If email confirmation is disabled, session is immediately available
+      if (data.session) {
+        router.push('/home')
+        return
+      }
+
+      // Fallback: try signing in right away
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
+      if (loginError) {
+        setError('Konto erstellt — bitte jetzt einloggen.')
+        setMode('login')
+      } else {
+        router.push('/home')
+      }
+      setLoading(false)
     }
   }
+
+  const canSubmit =
+    email.trim() !== '' &&
+    password.length >= 6 &&
+    (mode === 'login' || name.trim() !== '')
 
   return (
     <div
@@ -44,7 +107,7 @@ export default function LoginPage() {
     >
       <div style={{ width: '100%', maxWidth: 400 }}>
         {/* Logo */}
-        <div className="fade-up" style={{ textAlign: 'center', marginBottom: 48 }}>
+        <div className="fade-up" style={{ textAlign: 'center', marginBottom: 40 }}>
           <div
             style={{
               fontFamily: 'var(--font-barlow)',
@@ -68,100 +131,124 @@ export default function LoginPage() {
           >
             2026
           </div>
-          <div
-            style={{
-              marginTop: 12,
-              fontSize: 14,
-              color: 'var(--text-dim)',
-              lineHeight: 1.5,
-            }}
-          >
+          <div style={{ marginTop: 10, fontSize: 14, color: 'var(--text-dim)', lineHeight: 1.5 }}>
             Peer-to-Peer Trading auf WM-Teams
           </div>
         </div>
 
-        {sent ? (
-          <div
-            className="fade-up card"
-            style={{ textAlign: 'center', padding: 32 }}
-          >
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
-            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-              Magic Link gesendet!
-            </div>
-            <div style={{ color: 'var(--text-dim)', fontSize: 14, lineHeight: 1.6 }}>
-              Schau in dein Postfach unter{' '}
-              <span style={{ color: 'var(--gold)' }}>{email}</span>
-              <br />
-              und klick auf den Link um dich einzuloggen.
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="fade-up stagger-2">
-            <div className="card" style={{ padding: 24 }}>
-              <div style={{ marginBottom: 20 }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: 12,
-                    color: 'var(--text-dim)',
-                    marginBottom: 8,
-                    fontWeight: 600,
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  E-Mail-Adresse
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="deine@email.ch"
-                  required
-                  autoComplete="email"
-                />
-              </div>
-
-              {error && (
-                <div
-                  style={{
-                    color: 'var(--short)',
-                    fontSize: 13,
-                    marginBottom: 16,
-                    padding: '8px 12px',
-                    background: 'var(--short-dim)',
-                    borderRadius: 8,
-                  }}
-                >
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading || !email}
-                className="btn btn-primary"
-                style={{ width: '100%' }}
-              >
-                {loading ? 'Sende Link...' : '✉️ Magic Link senden'}
-              </button>
-            </div>
-
-            <div
+        {/* Mode toggle */}
+        <div
+          className="fade-up stagger-1"
+          style={{
+            display: 'flex',
+            padding: 4,
+            background: 'var(--surface)',
+            borderRadius: 14,
+            border: '1px solid var(--border)',
+            marginBottom: 20,
+          }}
+        >
+          {(['login', 'register'] as const).map(m => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => { setMode(m); setError('') }}
               style={{
-                textAlign: 'center',
-                marginTop: 20,
-                fontSize: 13,
-                color: 'var(--text-mute)',
-                lineHeight: 1.6,
+                flex: 1,
+                padding: '10px 0',
+                borderRadius: 11,
+                border: 'none',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: mode === m ? 'var(--gold)' : 'transparent',
+                color: mode === m ? '#080810' : 'var(--text-dim)',
+                transition: 'background 0.15s, color 0.15s',
               }}
             >
-              Kein Passwort nötig. Du bekommst einen
-              <br />
-              Einmal-Link per E-Mail.
+              {m === 'login' ? 'Anmelden' : 'Registrieren'}
+            </button>
+          ))}
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="fade-up stagger-2">
+          <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+            {mode === 'register' && (
+              <div>
+                <label style={labelStyle}>Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Dein Anzeigename"
+                  autoComplete="name"
+                  required
+                />
+              </div>
+            )}
+
+            <div>
+              <label style={labelStyle}>E-Mail-Adresse</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="deine@email.ch"
+                autoComplete="email"
+                required
+              />
             </div>
-          </form>
+
+            <div>
+              <label style={labelStyle}>Passwort</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder={mode === 'register' ? 'Mindestens 6 Zeichen' : '••••••••'}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                minLength={6}
+                required
+              />
+            </div>
+
+            {error && (
+              <div
+                style={{
+                  color: 'var(--short)',
+                  fontSize: 13,
+                  padding: '10px 12px',
+                  background: 'var(--short-dim)',
+                  borderRadius: 8,
+                  border: '1px solid rgba(255,61,61,0.2)',
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || !canSubmit}
+              className="btn btn-primary"
+              style={{ width: '100%', marginTop: 4 }}
+            >
+              {loading
+                ? mode === 'login' ? 'Anmelden...' : 'Konto erstellen...'
+                : mode === 'login' ? '🔑 Anmelden' : '🚀 Konto erstellen'}
+            </button>
+          </div>
+        </form>
+
+        {mode === 'register' && (
+          <div
+            className="fade-up stagger-3"
+            style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: 'var(--text-mute)', lineHeight: 1.6 }}
+          >
+            Der erste User wird automatisch Admin.
+          </div>
         )}
       </div>
     </div>
