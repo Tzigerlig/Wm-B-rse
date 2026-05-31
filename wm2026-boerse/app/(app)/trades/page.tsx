@@ -84,7 +84,7 @@ export default function TradesPage() {
     setLoadingId(orderId)
     const supabase = createClient()
 
-    console.log('[accept_order] Step 1 — claiming order:', orderId, 'user:', profile.id)
+    console.log('🎯 [AcceptOrder] BUTTON CLICKED for order:', orderId, 'user:', profile.id)
 
     // Step 1: Order atomar claimen (race-safe via .eq('status', 'open'))
     const { data: claimed, error: claimError } = await supabase
@@ -315,10 +315,9 @@ export default function TradesPage() {
                       <button
                         className="btn btn-primary"
                         style={{ padding: '8px 12px', fontSize: 12 }}
-                        disabled={loadingId === order.id}
                         onClick={() => handleAcceptOrder(order.id)}
                       >
-                        Akzeptieren
+                        {loadingId === order.id ? '...' : 'Akzeptieren'}
                       </button>
                     )}
                   </div>

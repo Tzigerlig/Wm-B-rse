@@ -46,15 +46,43 @@ export default function CreateTradeModal({ onClose }: { onClose: () => void }) {
   const total = parseFloat(qty) * parseFloat(price)
 
   async function handleSubmit() {
-    console.log('[CreateTradeModal] handleSubmit fired', {
+    console.log('🎯 [DirectTrade] BUTTON CLICKED', {
       tab, selectedTeam, qty, price, counterpartyId,
       hasProfile: !!profile, tournamentEnded: !!tournament?.ended,
+      loading,
     })
 
-    if (!profile || !selectedTeam || !qty || price === '') return
-    if (tab === 'direct' && !counterpartyId) return
+    if (!profile) {
+      console.warn('🎯 [DirectTrade] BLOCKED — no profile')
+      addToast('Nicht eingeloggt', 'error')
+      return
+    }
+    if (!selectedTeam) {
+      console.warn('🎯 [DirectTrade] BLOCKED — no team selected')
+      addToast('Bitte Team auswählen', 'error')
+      return
+    }
+    if (!qty || parseFloat(qty) <= 0) {
+      console.warn('🎯 [DirectTrade] BLOCKED — invalid qty:', qty)
+      addToast('Bitte Menge eingeben', 'error')
+      return
+    }
+    if (price === '' || isNaN(parseFloat(price))) {
+      console.warn('🎯 [DirectTrade] BLOCKED — invalid price:', price)
+      addToast('Bitte Preis eingeben', 'error')
+      return
+    }
+    if (tab === 'direct' && !counterpartyId) {
+      console.warn('🎯 [DirectTrade] BLOCKED — no counterparty')
+      addToast('Bitte Gegenpartei auswählen', 'error')
+      return
+    }
     if (tournament?.ended) {
       addToast('Turnier ist beendet — keine neuen Trades möglich', 'error')
+      return
+    }
+    if (loading) {
+      console.warn('🎯 [DirectTrade] BLOCKED — already loading')
       return
     }
 
@@ -72,7 +100,7 @@ export default function CreateTradeModal({ onClose }: { onClose: () => void }) {
         status: 'open',
       })
       if (error) {
-        console.error('[CreateTradeModal] orders insert error:', error)
+        console.error('🎯 [DirectTrade] orders insert error:', error)
         addToast(`Fehler: ${error.message}`, 'error')
       } else {
         addToast('Order ins Buch gestellt ✓', 'success')
@@ -91,15 +119,15 @@ export default function CreateTradeModal({ onClose }: { onClose: () => void }) {
         proposed_by: profile.id,
         status: 'pending' as const,
       }
-      console.log('[CreateTradeModal] inserting direct trade:', tradeData)
+      console.log('🎯 [DirectTrade] sending trade:', tradeData)
 
-      const { error } = await supabase.from('trades').insert(tradeData)
+      const { data, error } = await supabase.from('trades').insert(tradeData).select()
+      console.log('🎯 [DirectTrade] response:', { data, error })
+
       if (error) {
-        console.error('[CreateTradeModal] trades insert error:', error)
         addToast(`Fehler: ${error.message}`, 'error')
       } else {
         const partnerName = otherProfiles.find(p => p.id === counterpartyId)?.name ?? '?'
-        console.log('[CreateTradeModal] direct trade success, partner:', partnerName)
         addToast(`Trade-Vorschlag an ${partnerName} gesendet ✓`, 'success')
         await refreshTrades()
         onClose()
@@ -317,7 +345,6 @@ export default function CreateTradeModal({ onClose }: { onClose: () => void }) {
         <button
           className="btn btn-primary"
           style={{ width: '100%' }}
-          disabled={!canSubmit || loading || !!tournament?.ended}
           onClick={handleSubmit}
         >
           {loading ? 'Sende...' : tab === 'order' ? '📋 Order stellen' : '🎯 Trade senden'}
