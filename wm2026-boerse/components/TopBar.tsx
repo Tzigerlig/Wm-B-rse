@@ -1,10 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useApp } from '@/components/AppProvider'
+import ProfileModal from '@/components/ProfileModal'
 
 export default function TopBar({ title }: { title?: string }) {
   const { profile, isLive } = useApp()
+  const [showProfile, setShowProfile] = useState(false)
 
   return (
     <header
@@ -83,7 +86,8 @@ export default function TopBar({ title }: { title?: string }) {
 
         {/* Avatar */}
         {profile && (
-          <div
+          <button
+            onClick={() => setShowProfile(true)}
             style={{
               width: 32,
               height: 32,
@@ -94,12 +98,16 @@ export default function TopBar({ title }: { title?: string }) {
               justifyContent: 'center',
               fontSize: 16,
               border: '2px solid var(--border-strong)',
+              cursor: 'pointer',
+              padding: 0,
             }}
           >
             {profile.avatar}
-          </div>
+          </button>
         )}
       </div>
+
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </header>
   )
 }

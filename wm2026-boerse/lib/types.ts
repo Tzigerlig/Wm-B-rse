@@ -4,6 +4,7 @@ export type Profile = {
   avatar: string
   color: string
   is_admin: boolean
+  onboarding_completed: boolean
   created_at: string
 }
 

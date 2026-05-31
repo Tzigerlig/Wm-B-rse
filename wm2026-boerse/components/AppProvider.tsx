@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 
 type Toast = { id: number; message: string; type: 'success' | 'error' | 'info' }
 
+const TOAST_DURATIONS = { success: 3000, error: 5000, info: 4000 } as const
+
 type AppContextType = {
   profile: Profile | null
   profiles: Profile[]
@@ -18,6 +20,7 @@ type AppContextType = {
   addToast: (message: string, type?: Toast['type']) => void
   refreshTrades: () => Promise<void>
   refreshOrders: () => Promise<void>
+  refreshProfile: () => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -44,7 +47,7 @@ export default function AppProvider({
   initialData: InitialData
   children: React.ReactNode
 }) {
-  const [profile] = useState(initialData.profile)
+  const [profile, setProfile] = useState(initialData.profile)
   const [profiles] = useState(initialData.profiles)
   const [trades, setTrades] = useState<Trade[]>(initialData.trades)
   const [orders, setOrders] = useState<Order[]>(initialData.orders)
@@ -60,7 +63,7 @@ export default function AppProvider({
     setToasts(prev => [...prev, { id, message, type }])
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))
-    }, 4000)
+    }, TOAST_DURATIONS[type])
   }, [])
 
   const refreshTrades = useCallback(async () => {
@@ -79,6 +82,14 @@ export default function AppProvider({
       .select('*, creator:creator_id(id,name,avatar,color)')
       .order('created_at', { ascending: false })
     if (data) setOrders(data as Order[])
+  }, [])
+
+  const refreshProfile = useCallback(async () => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+    if (data) setProfile(data as Profile)
   }, [])
 
   useEffect(() => {
@@ -137,6 +148,7 @@ export default function AppProvider({
         addToast,
         refreshTrades,
         refreshOrders,
+        refreshProfile,
       }}
     >
       {children}
