@@ -84,30 +84,64 @@ export default function TradesPage() {
     setLoadingId(orderId)
     const supabase = createClient()
 
-    // Atomare RPC-Funktion: UPDATE orders + INSERT trade in einer Transaktion
-    const { data, error } = await supabase.rpc('accept_order', {
-      p_order_id:    orderId,
-      p_acceptor_id: profile.id,
-    })
+    console.log('[accept_order] Step 1 — claiming order:', orderId, 'user:', profile.id)
 
-    if (error) {
-      console.error('[accept_order] RPC error:', error)
-      addToast('Fehler beim Akzeptieren der Order', 'error')
-      setLoadingId(null)
-      return
-    }
+    // Step 1: Order atomar claimen (race-safe via .eq('status', 'open'))
+    const { data: claimed, error: claimError } = await supabase
+      .from('orders')
+      .update({
+        status:      'accepted',
+        accepted_by: profile.id,
+        accepted_at: new Date().toISOString(),
+      })
+      .eq('id', orderId)
+      .eq('status', 'open')
+      .neq('creator_id', profile.id)
+      .select()
+      .single()
 
-    const result = data as { success: boolean; error?: string }
+    console.log('[accept_order] claim result:', { claimed, claimError })
 
-    if (!result.success) {
-      console.error('[accept_order] Logical error:', result.error)
-      addToast(result.error ?? 'Order nicht mehr verfügbar', 'error')
+    if (claimError || !claimed) {
+      console.error('[accept_order] claim failed:', claimError)
+      addToast(claimError ? `Fehler: ${claimError.message}` : 'Order nicht mehr verfügbar', 'error')
       await refreshOrders()
       setLoadingId(null)
       return
     }
 
-    addToast('Order akzeptiert — Trade-Vorschlag erstellt', 'success')
+    // Step 2: Trade anlegen
+    const isBuy = claimed.side === 'buy'
+    const tradeData = {
+      buyer_id:       isBuy ? claimed.creator_id : profile.id,
+      seller_id:      isBuy ? profile.id : claimed.creator_id,
+      team_name:      claimed.team_name,
+      qty:            claimed.qty,
+      price_per_unit: claimed.price_per_unit,
+      proposed_by:    claimed.creator_id,
+      from_order_id:  claimed.id,
+      status:         'pending' as const,
+    }
+
+    console.log('[accept_order] Step 2 — inserting trade:', tradeData)
+
+    const { error: tradeError } = await supabase.from('trades').insert(tradeData)
+
+    if (tradeError) {
+      console.error('[accept_order] trade insert failed:', tradeError)
+      // Rollback: Order wieder freigeben
+      await supabase
+        .from('orders')
+        .update({ status: 'open', accepted_by: null, accepted_at: null })
+        .eq('id', orderId)
+      addToast(`Fehler: ${tradeError.message}`, 'error')
+      await refreshOrders()
+      setLoadingId(null)
+      return
+    }
+
+    console.log('[accept_order] success')
+    addToast('Order angenommen — Trade-Vorschlag erstellt ✓', 'success')
     await Promise.all([refreshOrders(), refreshTrades()])
     setLoadingId(null)
   }

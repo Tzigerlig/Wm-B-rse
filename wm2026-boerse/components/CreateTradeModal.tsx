@@ -46,7 +46,12 @@ export default function CreateTradeModal({ onClose }: { onClose: () => void }) {
   const total = parseFloat(qty) * parseFloat(price)
 
   async function handleSubmit() {
-    if (!profile || !selectedTeam || !qty || !price) return
+    console.log('[CreateTradeModal] handleSubmit fired', {
+      tab, selectedTeam, qty, price, counterpartyId,
+      hasProfile: !!profile, tournamentEnded: !!tournament?.ended,
+    })
+
+    if (!profile || !selectedTeam || !qty || price === '') return
     if (tab === 'direct' && !counterpartyId) return
     if (tournament?.ended) {
       addToast('Turnier ist beendet — keine neuen Trades möglich', 'error')
@@ -68,32 +73,34 @@ export default function CreateTradeModal({ onClose }: { onClose: () => void }) {
       })
       if (error) {
         console.error('[CreateTradeModal] orders insert error:', error)
-        addToast('Fehler beim Erstellen der Order', 'error')
+        addToast(`Fehler: ${error.message}`, 'error')
       } else {
-        addToast('Order ins Buch gestellt', 'success')
+        addToast('Order ins Buch gestellt ✓', 'success')
         await refreshOrders()
         onClose()
       }
     } else {
       const buyer_id = side === 'buy' ? profile.id : counterpartyId
       const seller_id = side === 'sell' ? profile.id : counterpartyId
-
-      const { error } = await supabase.from('trades').insert({
+      const tradeData = {
         buyer_id,
         seller_id,
         team_name: selectedTeam,
         qty: parseInt(qty),
         price_per_unit: parseFloat(price),
         proposed_by: profile.id,
-        status: 'pending',
-        // note-Feld existiert nicht in der trades-Tabelle (nur in orders)
-      })
+        status: 'pending' as const,
+      }
+      console.log('[CreateTradeModal] inserting direct trade:', tradeData)
+
+      const { error } = await supabase.from('trades').insert(tradeData)
       if (error) {
         console.error('[CreateTradeModal] trades insert error:', error)
-        addToast('Fehler beim Erstellen des Trades', 'error')
+        addToast(`Fehler: ${error.message}`, 'error')
       } else {
         const partnerName = otherProfiles.find(p => p.id === counterpartyId)?.name ?? '?'
-        addToast(`Trade an ${partnerName} gesendet`, 'success')
+        console.log('[CreateTradeModal] direct trade success, partner:', partnerName)
+        addToast(`Trade-Vorschlag an ${partnerName} gesendet ✓`, 'success')
         await refreshTrades()
         onClose()
       }
@@ -103,12 +110,13 @@ export default function CreateTradeModal({ onClose }: { onClose: () => void }) {
   }
 
   const canSubmit =
-    selectedTeam &&
-    qty &&
+    !!selectedTeam &&
+    !!qty &&
     parseFloat(qty) > 0 &&
-    price &&
-    parseFloat(price) > 0 &&
-    (tab === 'order' || counterpartyId)
+    price !== '' &&
+    !isNaN(parseFloat(price)) &&
+    parseFloat(price) >= 0 &&
+    (tab === 'order' || !!counterpartyId)
 
   return (
     <div className="modal-overlay" onClick={onClose}>
