@@ -80,7 +80,7 @@ export default function SettlementPage() {
       </div>
 
       {myDebts.length === 0 ? (
-        <EmptyState icon="⚖️" title="Keine Schulden" description="Alle Positionen sind ausgeglichen." />
+        <EmptyState icon="🎉" title="Alles ausgeglichen!" description="Du schuldest niemandem etwas — und niemand schuldet dir etwas." />
       ) : (
         <>
           {/* Receivables */}

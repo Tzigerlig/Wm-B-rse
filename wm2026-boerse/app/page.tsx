@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 
 type Mode = 'login' | 'register'
 
+const AVATARS = ['🦁', '🦊', '🐺', '🐯', '🦅', '🦈', '🐙', '🐉', '⚽', '🏆', '🎯', '🚀']
+
 const ERRORS: Record<string, string> = {
   'Invalid login credentials':    'E-Mail oder Passwort falsch.',
   'Email not confirmed':          'E-Mail-Adresse noch nicht bestätigt.',
@@ -41,6 +43,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [selectedAvatar, setSelectedAvatar] = useState(() => AVATARS[Math.floor(Math.random() * AVATARS.length)])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -61,7 +64,7 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { name: name.trim() || email.split('@')[0] } },
+        options: { data: { name: name.trim() || email.split('@')[0], avatar: selectedAvatar } },
       })
 
       if (error) {
@@ -186,6 +189,34 @@ export default function LoginPage() {
                   autoComplete="name"
                   required
                 />
+              </div>
+            )}
+
+            {mode === 'register' && (
+              <div>
+                <label style={labelStyle}>Avatar</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8 }}>
+                  {AVATARS.map(a => (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() => setSelectedAvatar(a)}
+                      style={{
+                        aspectRatio: '1',
+                        borderRadius: 10,
+                        fontSize: 24,
+                        cursor: 'pointer',
+                        border: `2px solid ${selectedAvatar === a ? 'var(--gold)' : 'var(--border)'}`,
+                        background: selectedAvatar === a ? 'var(--gold-dim)' : 'var(--surface)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {a}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 

@@ -185,13 +185,14 @@ export default function HomePage() {
 
       {!hasActivity ? (
         <EmptyState
-          icon="🏆"
+          icon="⚽"
           title="Noch keine Trades"
-          description="Stell eine Order ins Buch oder schick deinen Freunden einen Direct Trade."
+          description="Schau im Markt-Tab nach Teams und stell deine erste Order!"
           action={
-            <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-              Erste Order erstellen
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-primary" onClick={() => setShowCreate(true)}>+ Neue Order</button>
+              <Link href="/markt"><button className="btn btn-ghost">📈 Zum Markt</button></Link>
+            </div>
           }
         />
       ) : (

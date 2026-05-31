@@ -4,6 +4,7 @@ import AppProvider from '@/components/AppProvider'
 import TopBar from '@/components/TopBar'
 import BottomNav from '@/components/BottomNav'
 import ToastContainer from '@/components/Toast'
+import OnboardingModal from '@/components/OnboardingModal'
 import type { Profile, Trade, Order, TeamPrice, TournamentState } from '@/lib/types'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <main className="app-content">{children}</main>
         <BottomNav />
         <ToastContainer />
+        <OnboardingModal />
       </div>
     </AppProvider>
   )

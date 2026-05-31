@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useApp } from '@/components/AppProvider'
 import EmptyState from '@/components/EmptyState'
 import { calcPosition, calcTeamPnl, calcTotalPnl, calcAvgEntry } from '@/lib/calc'
@@ -130,7 +131,12 @@ export default function PortfolioPage() {
 
       {tab === 'positionen' ? (
         teamPositions.length === 0 ? (
-          <EmptyState icon="💼" title="Keine aktiven Positionen" description="Bestätigte Trades erscheinen hier als Positionen." />
+          <EmptyState
+            icon="💼"
+            title="Keine aktiven Positionen"
+            description="Bestätige Trades unter dem Trades-Tab — sie erscheinen dann hier."
+            action={<Link href="/trades"><button className="btn btn-primary" style={{ fontSize: 13 }}>→ Zu den Trades</button></Link>}
+          />
         ) : (
           <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {teamPositions.map(({ name, pos, pnl, currentPrice, avgLong, avgShort, team }) => {
