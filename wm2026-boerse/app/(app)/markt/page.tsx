@@ -45,7 +45,7 @@ export default function MarktPage() {
   return (
     <div>
       {/* Controls */}
-      <div style={{ padding: '12px 16px', position: 'sticky', top: 53, background: 'var(--bg)', zIndex: 20 }}>
+      <div style={{ padding: '12px 16px', position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 20 }}>
         <input
           type="search"
           placeholder="Team suchen..."

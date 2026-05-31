@@ -67,6 +67,7 @@ export default function CreateTradeModal({ onClose }: { onClose: () => void }) {
         status: 'open',
       })
       if (error) {
+        console.error('[CreateTradeModal] orders insert error:', error)
         addToast('Fehler beim Erstellen der Order', 'error')
       } else {
         addToast('Order ins Buch gestellt', 'success')
@@ -85,9 +86,10 @@ export default function CreateTradeModal({ onClose }: { onClose: () => void }) {
         price_per_unit: parseFloat(price),
         proposed_by: profile.id,
         status: 'pending',
-        note: note || null,
+        // note-Feld existiert nicht in der trades-Tabelle (nur in orders)
       })
       if (error) {
+        console.error('[CreateTradeModal] trades insert error:', error)
         addToast('Fehler beim Erstellen des Trades', 'error')
       } else {
         const partnerName = otherProfiles.find(p => p.id === counterpartyId)?.name ?? '?'

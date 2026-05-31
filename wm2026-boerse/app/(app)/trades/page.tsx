@@ -56,6 +56,7 @@ export default function TradesPage() {
       .eq('id', tradeId)
 
     if (error) {
+      console.error('[handleConfirmTrade] error:', error)
       addToast('Fehler beim Aktualisieren', 'error')
     } else {
       addToast(action === 'confirmed' ? '✓ Trade bestätigt' : '✕ Trade abgelehnt', action === 'confirmed' ? 'success' : 'info')
@@ -69,6 +70,7 @@ export default function TradesPage() {
     const supabase = createClient()
     const { error } = await supabase.from('trades').update({ status: 'cancelled' }).eq('id', tradeId)
     if (error) {
+      console.error('[handleCancelTrade] error:', error)
       addToast('Fehler beim Zurückziehen', 'error')
     } else {
       addToast('Trade zurückgezogen', 'info')
@@ -77,46 +79,36 @@ export default function TradesPage() {
     setLoadingId(null)
   }
 
-  async function handleAcceptOrder(orderId: string, order: { side: 'buy' | 'sell'; team_name: string; qty: number; price_per_unit: number; creator_id: string }) {
+  async function handleAcceptOrder(orderId: string) {
     if (!profile) return
     setLoadingId(orderId)
     const supabase = createClient()
 
-    const { data, error: updateError } = await supabase
-      .from('orders')
-      .update({ status: 'accepted', accepted_by: profile.id, accepted_at: new Date().toISOString() })
-      .eq('id', orderId)
-      .eq('status', 'open')
-      .select()
-      .single()
+    // Atomare RPC-Funktion: UPDATE orders + INSERT trade in einer Transaktion
+    const { data, error } = await supabase.rpc('accept_order', {
+      p_order_id:    orderId,
+      p_acceptor_id: profile.id,
+    })
 
-    if (updateError || !data) {
-      addToast('Order nicht mehr verfügbar', 'error')
+    if (error) {
+      console.error('[accept_order] RPC error:', error)
+      addToast('Fehler beim Akzeptieren der Order', 'error')
+      setLoadingId(null)
+      return
+    }
+
+    const result = data as { success: boolean; error?: string }
+
+    if (!result.success) {
+      console.error('[accept_order] Logical error:', result.error)
+      addToast(result.error ?? 'Order nicht mehr verfügbar', 'error')
       await refreshOrders()
       setLoadingId(null)
       return
     }
 
-    const buyer_id = order.side === 'buy' ? order.creator_id : profile.id
-    const seller_id = order.side === 'sell' ? order.creator_id : profile.id
-
-    const { error: tradeError } = await supabase.from('trades').insert({
-      buyer_id,
-      seller_id,
-      team_name: order.team_name,
-      qty: order.qty,
-      price_per_unit: order.price_per_unit,
-      proposed_by: order.creator_id,
-      status: 'pending',
-      from_order_id: orderId,
-    })
-
-    if (tradeError) {
-      addToast('Fehler beim Erstellen des Trades', 'error')
-    } else {
-      addToast('Order akzeptiert — Trade erstellt', 'success')
-      await Promise.all([refreshOrders(), refreshTrades()])
-    }
+    addToast('Order akzeptiert — Trade-Vorschlag erstellt', 'success')
+    await Promise.all([refreshOrders(), refreshTrades()])
     setLoadingId(null)
   }
 
@@ -290,7 +282,7 @@ export default function TradesPage() {
                         className="btn btn-primary"
                         style={{ padding: '8px 12px', fontSize: 12 }}
                         disabled={loadingId === order.id}
-                        onClick={() => handleAcceptOrder(order.id, order)}
+                        onClick={() => handleAcceptOrder(order.id)}
                       >
                         Akzeptieren
                       </button>

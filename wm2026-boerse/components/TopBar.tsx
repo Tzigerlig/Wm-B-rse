@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useApp } from '@/components/AppProvider'
 
 export default function TopBar({ title }: { title?: string }) {
@@ -56,6 +57,29 @@ export default function TopBar({ title }: { title?: string }) {
           />
           {isLive ? 'LIVE' : 'OFFLINE'}
         </div>
+
+        {/* Admin link — nur für Admins sichtbar */}
+        {profile?.is_admin && (
+          <Link
+            href="/admin"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: 'var(--gold-dim)',
+              border: '1px solid rgba(255,215,0,0.3)',
+              fontSize: 15,
+              textDecoration: 'none',
+              transition: 'background 0.15s',
+            }}
+            title="Admin Panel"
+          >
+            ⚙️
+          </Link>
+        )}
 
         {/* Avatar */}
         {profile && (
