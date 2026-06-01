@@ -38,16 +38,30 @@ export default function AdminPage() {
     if (!profile) return
     setLoadingId(teamName)
     const supabase = createClient()
-    const price = PHASE_PRICES[phase]
-    const { error } = await supabase.from('team_prices').upsert({
-      team_name: teamName,
-      phase,
-      price,
-      set_at: new Date().toISOString(),
-      set_by: profile.id,
-    }, { onConflict: 'team_name' })
-    if (error) addToast('Fehler beim Setzen des Kurses', 'error')
-    else addToast(`${teamName} → ${phase} (${formatChf(price)})`, 'success')
+    const newPrice = PHASE_PRICES[phase]
+    const current = priceMap[teamName]
+    const [upsertResult] = await Promise.all([
+      supabase.from('team_prices').upsert({
+        team_name: teamName,
+        phase,
+        price: newPrice,
+        set_at: new Date().toISOString(),
+        set_by: profile.id,
+      }, { onConflict: 'team_name' }),
+    ])
+    if (upsertResult.error) {
+      addToast('Fehler beim Setzen des Kurses', 'error')
+    } else {
+      await supabase.from('price_updates').insert({
+        team_name: teamName,
+        old_phase: current?.phase ?? null,
+        new_phase: phase,
+        old_price: current?.price ?? null,
+        new_price: newPrice,
+        changed_by: profile.id,
+      })
+      addToast(`${teamName} → ${phase} (${formatChf(newPrice)})`, 'success')
+    }
     setLoadingId(null)
   }
 

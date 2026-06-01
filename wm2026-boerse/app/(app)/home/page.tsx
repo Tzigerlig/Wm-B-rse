@@ -7,11 +7,11 @@ import { useApp } from '@/components/AppProvider'
 import EmptyState from '@/components/EmptyState'
 import CreateTradeModal from '@/components/CreateTradeModal'
 import { calcTotalPnl, calcTeamPnl } from '@/lib/calc'
-import { formatPnl, formatChf, pnlColor } from '@/lib/format'
+import { formatPnl, formatChf, pnlColor, timeAgo } from '@/lib/format'
 import { TEAMS } from '@/lib/teams'
 
 export default function HomePage() {
-  const { profile, trades, teamPrices, tournament } = useApp()
+  const { profile, trades, teamPrices, priceUpdates, tournament } = useApp()
   const [showCreate, setShowCreate] = useState(false)
   const router = useRouter()
 
@@ -56,13 +56,7 @@ export default function HomePage() {
       .sort((a, b) => b.pnl - a.pnl)
   }, [confirmedTrades, profile, priceMap])
 
-  const recentlyMoved = useMemo(() => {
-    const now = new Date()
-    return teamPrices.filter(tp => {
-      const diff = now.getTime() - new Date(tp.set_at).getTime()
-      return diff < 24 * 3600 * 1000
-    })
-  }, [teamPrices])
+  const recentPriceUpdates = useMemo(() => priceUpdates.slice(0, 10), [priceUpdates])
 
   const hasActivity = confirmedTrades.length > 0
 
@@ -237,25 +231,34 @@ export default function HomePage() {
             </>
           )}
 
-          {/* Recently moved */}
-          {recentlyMoved.length > 0 && (
+          {/* Price update log */}
+          {recentPriceUpdates.length > 0 && (
             <>
-              <div className="section-header">⚡ Heute bewegt</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingInline: 16, marginBottom: 8 }}>
-                {recentlyMoved.map(tp => {
-                  const team = TEAMS.find(t => t.name === tp.team_name)
+              <div className="section-header">⚡ Kursänderungen</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingInline: 16, marginBottom: 8 }}>
+                {recentPriceUpdates.map(pu => {
+                  const team = TEAMS.find(t => t.name === pu.team_name)
+                  const up = pu.old_price !== null && pu.new_price > pu.old_price
+                  const down = pu.old_price !== null && pu.new_price < pu.old_price
                   return (
-                    <div key={tp.team_name} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 22 }}>{team?.flag ?? '🏳'}</span>
-                        <div>
-                          <div style={{ fontSize: 15, fontWeight: 600 }}>{tp.team_name}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{tp.phase}</div>
+                    <div key={pu.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
+                      <span style={{ fontSize: 20, flexShrink: 0 }}>{team?.flag ?? '🏳'}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{pu.team_name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                          {pu.old_phase ? `${pu.old_phase} → ` : ''}{pu.new_phase} · {timeAgo(pu.created_at)}
                         </div>
                       </div>
-                      <span className="tabular" style={{ color: 'var(--gold)', fontWeight: 700, fontSize: 16 }}>
-                        {formatChf(tp.price)}
-                      </span>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        {pu.old_price !== null && (
+                          <div style={{ fontSize: 10, color: 'var(--text-dim)', textDecoration: 'line-through' }}>
+                            {formatChf(pu.old_price)}
+                          </div>
+                        )}
+                        <div className="tabular" style={{ fontSize: 14, fontWeight: 700, color: up ? 'var(--long)' : down ? 'var(--short)' : 'var(--gold)' }}>
+                          {up ? '▲' : down ? '▼' : ''} {formatChf(pu.new_price)}
+                        </div>
+                      </div>
                     </div>
                   )
                 })}

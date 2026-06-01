@@ -57,6 +57,17 @@ export type TradeMessage = {
   sender?: { name: string; avatar: string; color: string }
 }
 
+export type PriceUpdate = {
+  id: string
+  team_name: string
+  old_phase: string | null
+  new_phase: string
+  old_price: number | null
+  new_price: number
+  changed_by: string | null
+  created_at: string
+}
+
 export type TournamentState = {
   id: 1
   ended: boolean

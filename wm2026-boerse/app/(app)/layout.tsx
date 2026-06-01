@@ -5,7 +5,7 @@ import TopBar from '@/components/TopBar'
 import BottomNav from '@/components/BottomNav'
 import ToastContainer from '@/components/Toast'
 import OnboardingModal from '@/components/OnboardingModal'
-import type { Profile, Trade, Order, TeamPrice, TournamentState } from '@/lib/types'
+import type { Profile, Trade, Order, TeamPrice, TournamentState, PriceUpdate } from '@/lib/types'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect('/')
 
-  const [profileRes, profilesRes, tradesRes, ordersRes, pricesRes, tournamentRes] =
+  const [profileRes, profilesRes, tradesRes, ordersRes, pricesRes, tournamentRes, priceUpdatesRes] =
     await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase.from('profiles').select('*'),
@@ -32,6 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         .order('created_at', { ascending: false }),
       supabase.from('team_prices').select('*'),
       supabase.from('tournament_state').select('*').single(),
+      supabase.from('price_updates').select('*').order('created_at', { ascending: false }).limit(100),
     ])
 
   return (
@@ -42,6 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         trades: (tradesRes.data ?? []) as Trade[],
         orders: (ordersRes.data ?? []) as Order[],
         teamPrices: (pricesRes.data ?? []) as TeamPrice[],
+        priceUpdates: (priceUpdatesRes.data ?? []) as PriceUpdate[],
         tournament: tournamentRes.data as TournamentState | null,
       }}
     >

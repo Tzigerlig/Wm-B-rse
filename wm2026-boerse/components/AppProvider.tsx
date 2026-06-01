@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import type { Profile, Trade, Order, TeamPrice, TournamentState } from '@/lib/types'
+import type { Profile, Trade, Order, TeamPrice, TournamentState, PriceUpdate } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 
 type Toast = { id: number; message: string; type: 'success' | 'error' | 'info' }
@@ -14,6 +14,7 @@ type AppContextType = {
   trades: Trade[]
   orders: Order[]
   teamPrices: TeamPrice[]
+  priceUpdates: PriceUpdate[]
   tournament: TournamentState | null
   isLive: boolean
   toasts: Toast[]
@@ -37,6 +38,7 @@ type InitialData = {
   trades: Trade[]
   orders: Order[]
   teamPrices: TeamPrice[]
+  priceUpdates: PriceUpdate[]
   tournament: TournamentState | null
 }
 
@@ -52,6 +54,7 @@ export default function AppProvider({
   const [trades, setTrades] = useState<Trade[]>(initialData.trades)
   const [orders, setOrders] = useState<Order[]>(initialData.orders)
   const [teamPrices, setTeamPrices] = useState<TeamPrice[]>(initialData.teamPrices)
+  const [priceUpdates, setPriceUpdates] = useState<PriceUpdate[]>(initialData.priceUpdates)
   const [tournament, setTournament] = useState(initialData.tournament)
   const [isLive, setIsLive] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -117,6 +120,13 @@ export default function AppProvider({
       )
       .on(
         'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'price_updates' },
+        payload => {
+          setPriceUpdates(prev => [payload.new as PriceUpdate, ...prev].slice(0, 100))
+        }
+      )
+      .on(
+        'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'tournament_state' },
         payload => {
           setTournament(payload.new as TournamentState)
@@ -142,6 +152,7 @@ export default function AppProvider({
         trades,
         orders,
         teamPrices,
+        priceUpdates,
         tournament,
         isLive,
         toasts,
