@@ -5,11 +5,11 @@ import { usePathname } from 'next/navigation'
 import { useApp } from '@/components/AppProvider'
 
 const tabs = [
-  { href: '/home',       icon: '🏠', label: 'Home'      },
-  { href: '/markt',      icon: '📈', label: 'Markt'     },
-  { href: '/portfolio',  icon: '💼', label: 'Portfolio' },
-  { href: '/trades',     icon: '🤝', label: 'Trades'    },
-  { href: '/settlement', icon: '⚖️', label: 'Settlement'},
+  { href: '/home',      icon: '🏠', label: 'Home'      },
+  { href: '/markt',     icon: '📈', label: 'Markt'     },
+  { href: '/portfolio', icon: '💼', label: 'Portfolio' },
+  { href: '/trades',    icon: '🤝', label: 'Trades'    },
+  { href: '/bracket',   icon: '🏆', label: 'Bracket'   },
 ]
 
 export default function BottomNav() {
