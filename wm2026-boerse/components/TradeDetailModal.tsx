@@ -3,6 +3,7 @@
 import { TEAMS } from '@/lib/teams'
 import { formatChf, timeAgo } from '@/lib/format'
 import type { Trade } from '@/lib/types'
+import TradeChat from '@/components/TradeChat'
 
 const STATUS_CONFIG = {
   confirmed: { label: 'Bestätigt',  color: 'var(--long)',     bg: 'var(--long-dim)'  },
@@ -90,7 +91,9 @@ export default function TradeDetailModal({
           )}
         </div>
 
-        <button className="btn btn-ghost" style={{ width: '100%' }} onClick={onClose}>
+        <TradeChat tradeId={trade.id} />
+
+        <button className="btn btn-ghost" style={{ width: '100%', marginTop: 16 }} onClick={onClose}>
           Schließen
         </button>
       </div>

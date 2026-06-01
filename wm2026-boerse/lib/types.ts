@@ -48,6 +48,15 @@ export type Trade = {
   seller?: Profile
 }
 
+export type TradeMessage = {
+  id: string
+  trade_id: string
+  sender_id: string
+  message: string
+  created_at: string
+  sender?: { name: string; avatar: string; color: string }
+}
+
 export type TournamentState = {
   id: 1
   ended: boolean
