@@ -17,7 +17,7 @@ const PHASE_PRICES: Record<TeamPrice['phase'], number> = {
 type AdminTab = 'kurse' | 'accounts' | 'turnier' | 'reset'
 
 export default function AdminPage() {
-  const { profile, profiles, teamPrices, tournament, addToast } = useApp()
+  const { profile, profiles, teamPrices, tournament, addToast, refreshTeamPrices, refreshProfiles } = useApp()
   const router = useRouter()
   const [pw, setPw] = useState('')
   const [authenticated, setAuthenticated] = useState(false)
@@ -60,6 +60,7 @@ export default function AdminPage() {
         new_price: newPrice,
         changed_by: profile.id,
       })
+      await refreshTeamPrices()
       addToast(`${teamName} → ${phase} (${formatChf(newPrice)})`, 'success')
     }
     setLoadingId(null)
@@ -69,8 +70,12 @@ export default function AdminPage() {
     setLoadingId(userId)
     const supabase = createClient()
     const { error } = await supabase.from('profiles').update({ is_admin: !current }).eq('id', userId)
-    if (error) addToast('Fehler', 'error')
-    else addToast(`Admin-Rechte ${!current ? 'vergeben' : 'entzogen'}`, 'success')
+    if (error) {
+      addToast('Fehler', 'error')
+    } else {
+      await refreshProfiles()
+      addToast(`Admin-Rechte ${!current ? 'vergeben' : 'entzogen'}`, 'success')
+    }
     setLoadingId(null)
   }
 

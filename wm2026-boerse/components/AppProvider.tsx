@@ -22,6 +22,8 @@ type AppContextType = {
   refreshTrades: () => Promise<void>
   refreshOrders: () => Promise<void>
   refreshProfile: () => Promise<void>
+  refreshTeamPrices: () => Promise<void>
+  refreshProfiles: () => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -50,7 +52,7 @@ export default function AppProvider({
   children: React.ReactNode
 }) {
   const [profile, setProfile] = useState(initialData.profile)
-  const [profiles] = useState(initialData.profiles)
+  const [profiles, setProfiles] = useState(initialData.profiles)
   const [trades, setTrades] = useState<Trade[]>(initialData.trades)
   const [orders, setOrders] = useState<Order[]>(initialData.orders)
   const [teamPrices, setTeamPrices] = useState<TeamPrice[]>(initialData.teamPrices)
@@ -93,6 +95,18 @@ export default function AppProvider({
     if (!user) return
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
     if (data) setProfile(data as Profile)
+  }, [])
+
+  const refreshTeamPrices = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase.from('team_prices').select('*')
+    if (data) setTeamPrices(data as TeamPrice[])
+  }, [])
+
+  const refreshProfiles = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase.from('profiles').select('*')
+    if (data) setProfiles(data as Profile[])
   }, [])
 
   useEffect(() => {
@@ -160,6 +174,8 @@ export default function AppProvider({
         refreshTrades,
         refreshOrders,
         refreshProfile,
+        refreshTeamPrices,
+        refreshProfiles,
       }}
     >
       {children}
