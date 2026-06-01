@@ -16,7 +16,7 @@ export default function HomePage() {
   const router = useRouter()
 
   const priceMap = useMemo(() => {
-    const m: Record<string, number> = {}
+    const m: Partial<Record<string, number>> = {}
     for (const tp of teamPrices) m[tp.team_name] = tp.price
     return m
   }, [teamPrices])
@@ -51,7 +51,7 @@ export default function HomePage() {
       .map(name => ({
         name,
         team: TEAMS.find(t => t.name === name),
-        pnl: calcTeamPnl(confirmedTrades, profile.id, name, priceMap[name] ?? 0),
+        pnl: calcTeamPnl(confirmedTrades, profile.id, name, priceMap[name] ?? null),
       }))
       .sort((a, b) => b.pnl - a.pnl)
   }, [confirmedTrades, profile, priceMap])
@@ -125,6 +125,11 @@ export default function HomePage() {
           {formatPnl(totalPnl)}
         </div>
 
+        {!tournament?.ended && myTeams.length > 0 && myTeams.some(({ name }) => !(name in priceMap)) && (
+          <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-dim)', padding: '6px 10px', background: 'rgba(255,215,0,0.05)', borderRadius: 8, border: '1px solid rgba(255,215,0,0.1)' }}>
+            ⏳ Noch keine Bewertung — der Admin setzt Kurse nach jeder Runde.
+          </div>
+        )}
         {tournament?.ended && (
           <div
             style={{

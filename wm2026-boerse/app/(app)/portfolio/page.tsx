@@ -35,7 +35,7 @@ export default function PortfolioPage() {
   const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null)
 
   const priceMap = useMemo(() => {
-    const m: Record<string, number> = {}
+    const m: Partial<Record<string, number>> = {}
     for (const tp of teamPrices) m[tp.team_name] = tp.price
     return m
   }, [teamPrices])
@@ -63,7 +63,7 @@ export default function PortfolioPage() {
     return names
       .map(name => {
         const pos = calcPosition(confirmedTrades, profile.id, name)
-        const currentPrice = priceMap[name] ?? 0
+        const currentPrice: number | null = priceMap[name] ?? null
         const pnl = calcTeamPnl(confirmedTrades, profile.id, name, currentPrice)
         const avgLong = calcAvgEntry(confirmedTrades, profile.id, name, 'long')
         const avgShort = calcAvgEntry(confirmedTrades, profile.id, name, 'short')
@@ -103,6 +103,11 @@ export default function PortfolioPage() {
           <span>{myConfirmed.length} Trades</span>
           <span>{teamPositions.length} Teams</span>
         </div>
+        {teamPositions.some(p => !(p.name in priceMap)) && (
+          <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-dim)', padding: '6px 10px', background: 'rgba(255,215,0,0.05)', borderRadius: 8, border: '1px solid rgba(255,215,0,0.1)' }}>
+            ⏳ Einige Positionen noch nicht bewertet — der Admin setzt Kurse nach jeder Runde.
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -121,7 +126,7 @@ export default function PortfolioPage() {
           <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {teamPositions.map(({ name, pos, pnl, currentPrice, avgLong, avgShort, team }) => {
               const isExpanded = expanded === name
-              const pnlPct = avgLong > 0 && pos.net > 0 ? ((currentPrice - avgLong) / avgLong) * 100 : null
+              const pnlPct = currentPrice !== null && avgLong > 0 && pos.net > 0 ? ((currentPrice - avgLong) / avgLong) * 100 : null
               return (
                 <div key={name} className="card" style={{ padding: 0, overflow: 'hidden' }}>
                   <button onClick={() => setExpanded(isExpanded ? null : name)} style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text)', gap: 10, textAlign: 'left' }}>
@@ -133,7 +138,10 @@ export default function PortfolioPage() {
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div className="tabular" style={{ color: pnlColor(pnl), fontWeight: 700, fontSize: 15 }}>{formatPnl(pnl)}</div>
+                      {currentPrice !== null
+                        ? <div className="tabular" style={{ color: pnlColor(pnl), fontWeight: 700, fontSize: 15 }}>{formatPnl(pnl)}</div>
+                        : <div style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 600 }}>—</div>
+                      }
                       {pnlPct !== null && <div style={{ fontSize: 11, color: pnlColor(pnl) }}>{pnlPct > 0 ? '+' : ''}{pnlPct.toFixed(1)}%</div>}
                     </div>
                     <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>{isExpanded ? '▲' : '▼'}</span>
@@ -143,7 +151,9 @@ export default function PortfolioPage() {
                       <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontSize: 12 }}>
                         <div>
                           <div style={{ color: 'var(--text-dim)' }}>Aktueller Kurs</div>
-                          <div className="tabular" style={{ color: 'var(--gold)', fontWeight: 700 }}>{currentPrice > 0 ? formatChf(currentPrice) : '—'}</div>
+                          <div className="tabular" style={{ color: 'var(--gold)', fontWeight: 700 }}>
+                            {currentPrice !== null ? formatChf(currentPrice) : '—'}
+                          </div>
                         </div>
                         {pos.net > 0 && avgLong > 0 && (
                           <div>
@@ -161,7 +171,9 @@ export default function PortfolioPage() {
                       {myConfirmed.filter(t => t.team_name === name).map(t => {
                         const isBuyer = t.buyer_id === profile.id
                         const partner = isBuyer ? t.seller : t.buyer
-                        const tradePnl = (currentPrice - t.price_per_unit) * t.qty * (isBuyer ? 1 : -1)
+                        const tradePnl = currentPrice !== null
+                          ? (currentPrice - t.price_per_unit) * t.qty * (isBuyer ? 1 : -1)
+                          : null
                         return (
                           <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
                             <div>
@@ -171,7 +183,10 @@ export default function PortfolioPage() {
                                 {(partner as { name: string } | undefined)?.name ?? 'Unbekannt'}
                               </div>
                             </div>
-                            <div className="tabular" style={{ color: pnlColor(tradePnl), fontWeight: 700 }}>{formatPnl(tradePnl)}</div>
+                            {tradePnl !== null
+                              ? <div className="tabular" style={{ color: pnlColor(tradePnl), fontWeight: 700 }}>{formatPnl(tradePnl)}</div>
+                              : <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Noch kein Kurs</div>
+                            }
                           </div>
                         )
                       })}

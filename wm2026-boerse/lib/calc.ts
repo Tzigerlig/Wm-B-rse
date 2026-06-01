@@ -13,7 +13,8 @@ export function calcPosition(trades: Trade[], userId: string, teamName: string) 
   return { qtyLong, qtyShort, net: qtyLong - qtyShort }
 }
 
-export function calcTradePnl(trade: Trade, userId: string, currentPrice: number): number {
+export function calcTradePnl(trade: Trade, userId: string, currentPrice: number | null): number {
+  if (currentPrice === null) return 0
   if (trade.buyer_id === userId) {
     return (currentPrice - trade.price_per_unit) * trade.qty
   }
@@ -27,7 +28,7 @@ export function calcTeamPnl(
   trades: Trade[],
   userId: string,
   teamName: string,
-  currentPrice: number
+  currentPrice: number | null
 ): number {
   return trades
     .filter(t => t.status === 'confirmed' && t.team_name === teamName)
@@ -39,12 +40,12 @@ export function calcTotalPnl(
   userId: string,
   teamPrices: TeamPrice[]
 ): number {
-  const priceMap: Record<string, number> = {}
+  const priceMap: Partial<Record<string, number>> = {}
   for (const tp of teamPrices) priceMap[tp.team_name] = tp.price
 
   const teams = [...new Set(trades.filter(t => t.status === 'confirmed').map(t => t.team_name))]
   return teams.reduce(
-    (sum, team) => sum + calcTeamPnl(trades, userId, team, priceMap[team] ?? 0),
+    (sum, team) => sum + calcTeamPnl(trades, userId, team, priceMap[team] ?? null),
     0
   )
 }
@@ -98,14 +99,15 @@ export function calcSettlement(
   trades: Trade[],
   teamPrices: TeamPrice[]
 ): Debt[] {
-  const priceMap: Record<string, number> = {}
+  const priceMap: Partial<Record<string, number>> = {}
   for (const tp of teamPrices) priceMap[tp.team_name] = tp.price
 
   const debtAmounts = new Map<string, number>()
   const debtTrades = new Map<string, Trade[]>()
 
   for (const trade of trades.filter(t => t.status === 'confirmed')) {
-    const finalPrice = priceMap[trade.team_name] ?? 0
+    const finalPrice = priceMap[trade.team_name]
+    if (finalPrice === undefined) continue
     const diff = (finalPrice - trade.price_per_unit) * trade.qty
 
     let from: string, to: string

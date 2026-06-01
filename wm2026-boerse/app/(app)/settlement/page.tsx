@@ -14,6 +14,19 @@ export default function SettlementPage() {
   const profileName = (id: string) => profiles.find(p => p.id === id)?.name ?? 'Unbekannt'
   const profileAvatar = (id: string) => profiles.find(p => p.id === id)?.avatar ?? '🦁'
 
+  const priceMap = useMemo(() => {
+    const m: Partial<Record<string, number>> = {}
+    for (const tp of teamPrices) m[tp.team_name] = tp.price
+    return m
+  }, [teamPrices])
+
+  const confirmedTrades = useMemo(() => trades.filter(t => t.status === 'confirmed'), [trades])
+
+  const unpricedTeams = useMemo(() => {
+    const names = new Set(confirmedTrades.map(t => t.team_name))
+    return [...names].filter(n => !(n in priceMap))
+  }, [confirmedTrades, priceMap])
+
   const allDebts = useMemo(() => calcSettlement(trades, teamPrices), [trades, teamPrices])
 
   const myDebts = useMemo(() => {
@@ -79,8 +92,15 @@ export default function SettlementPage() {
         </div>
       </div>
 
+      {unpricedTeams.length > 0 && (
+        <div style={{ padding: '10px 14px', marginBottom: 16, borderRadius: 10, background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.15)', fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+          ⏳ <strong style={{ color: 'var(--gold)' }}>{unpricedTeams.length} Team{unpricedTeams.length !== 1 ? 's' : ''}</strong> noch nicht bewertet
+          ({unpricedTeams.join(', ')}) — Schulden dafür werden erst nach Kurs-Setzung berechnet.
+        </div>
+      )}
+
       {myDebts.length === 0 ? (
-        <EmptyState icon="🎉" title="Alles ausgeglichen!" description="Du schuldest niemandem etwas — und niemand schuldet dir etwas." />
+        <EmptyState icon="🎉" title="Alles ausgeglichen!" description={unpricedTeams.length > 0 ? 'Keine Schulden aus bewerteten Trades — noch ausstehende Teams oben.' : 'Du schuldest niemandem etwas — und niemand schuldet dir etwas.'} />
       ) : (
         <>
           {/* Receivables */}
@@ -160,14 +180,15 @@ export default function SettlementPage() {
 
 function DebtDetail({ debt, myId }: { debt: { trades: import('@/lib/types').Trade[]; from: string; to: string }; myId: string }) {
   const { teamPrices } = useApp()
-  const priceMap: Record<string, number> = {}
+  const priceMap: Partial<Record<string, number>> = {}
   for (const tp of teamPrices) priceMap[tp.team_name] = tp.price
 
   return (
     <div style={{ borderTop: '1px solid var(--border)', padding: '12px 16px', background: 'rgba(0,0,0,0.2)' }}>
       {debt.trades.map(t => {
         const isBuyer = t.buyer_id === myId
-        const finalPrice = priceMap[t.team_name] ?? 0
+        const finalPrice = priceMap[t.team_name]
+        if (finalPrice === undefined) return null
         const diff = (finalPrice - t.price_per_unit) * t.qty * (isBuyer ? 1 : -1)
         const team = TEAMS.find(x => x.name === t.team_name)
         return (
