@@ -162,7 +162,7 @@ export default function MarktPage() {
                     </div>
                   </>
                 ) : (
-                  <div style={{ fontSize: 13, color: 'var(--text-mute)' }}>—</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--blue)' }}>Läuft noch</div>
                 )}
               </div>
             </button>

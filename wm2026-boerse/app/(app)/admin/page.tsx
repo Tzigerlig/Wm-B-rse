@@ -9,10 +9,19 @@ import { formatChf } from '@/lib/format'
 import type { TeamPrice } from '@/lib/types'
 
 const ADMIN_PW = process.env.NEXT_PUBLIC_ADMIN_PW ?? 'wm2026admin'
-const PHASES: TeamPrice['phase'][] = ['Gruppe', 'SF16', 'AF', 'VF', 'HF', 'Finale', 'Weltmeister']
 const PHASE_PRICES: Record<TeamPrice['phase'], number> = {
   Gruppe: 0, SF16: 10, AF: 15, VF: 25, HF: 50, Finale: 75, Weltmeister: 100,
 }
+const PHASE_OPTIONS: { value: TeamPrice['phase'] | 'offen'; label: string }[] = [
+  { value: 'offen',       label: 'Noch offen (kein Kurs)' },
+  { value: 'Gruppe',      label: 'Ausgeschieden — 0 Fr.' },
+  { value: 'SF16',        label: 'Runde der 32 — 10 Fr.' },
+  { value: 'AF',          label: 'Achtelfinale — 15 Fr.' },
+  { value: 'VF',          label: 'Viertelfinale — 25 Fr.' },
+  { value: 'HF',          label: 'Halbfinale — 50 Fr.' },
+  { value: 'Finale',      label: 'Finale — 75 Fr.' },
+  { value: 'Weltmeister', label: 'Weltmeister 🏆 — 100 Fr.' },
+]
 
 type AdminTab = 'kurse' | 'accounts' | 'turnier' | 'reset'
 
@@ -34,22 +43,33 @@ export default function AdminPage() {
     return m
   }, [teamPrices])
 
-  async function handleSetPrice(teamName: string, phase: TeamPrice['phase']) {
+  async function handleSetPrice(teamName: string, phase: TeamPrice['phase'] | 'offen') {
     if (!profile) return
     setLoadingId(teamName)
     const supabase = createClient()
-    const newPrice = PHASE_PRICES[phase]
     const current = priceMap[teamName]
-    const [upsertResult] = await Promise.all([
-      supabase.from('team_prices').upsert({
-        team_name: teamName,
-        phase,
-        price: newPrice,
-        set_at: new Date().toISOString(),
-        set_by: profile.id,
-      }, { onConflict: 'team_name' }),
-    ])
-    if (upsertResult.error) {
+
+    if (phase === 'offen') {
+      const { error } = await supabase.from('team_prices').delete().eq('team_name', teamName)
+      if (error) {
+        addToast('Fehler beim Zurücksetzen', 'error')
+      } else {
+        await refreshTeamPrices()
+        addToast(`${teamName} → Noch offen`, 'info')
+      }
+      setLoadingId(null)
+      return
+    }
+
+    const newPrice = PHASE_PRICES[phase]
+    const { error } = await supabase.from('team_prices').upsert({
+      team_name: teamName,
+      phase,
+      price: newPrice,
+      set_at: new Date().toISOString(),
+      set_by: profile.id,
+    }, { onConflict: 'team_name' })
+    if (error) {
       addToast('Fehler beim Setzen des Kurses', 'error')
     } else {
       await supabase.from('price_updates').insert({
@@ -183,23 +203,24 @@ export default function AdminPage() {
                 <span style={{ fontSize: 20 }}>{team.flag}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{team.name}</div>
-                  {current && (
+                  {current ? (
                     <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
                       {current.phase} · {formatChf(current.price)}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--blue)', marginTop: 2 }}>
+                      Läuft noch
                     </div>
                   )}
                 </div>
                 <select
-                  value={current?.phase ?? ''}
+                  value={current?.phase ?? 'offen'}
                   disabled={loadingId === team.name}
-                  style={{ width: 120, padding: '6px 10px', fontSize: 12 }}
-                  onChange={e => handleSetPrice(team.name, e.target.value as TeamPrice['phase'])}
+                  style={{ width: 148, padding: '6px 10px', fontSize: 11 }}
+                  onChange={e => handleSetPrice(team.name, e.target.value as TeamPrice['phase'] | 'offen')}
                 >
-                  <option value="" disabled>Phase wählen</option>
-                  {PHASES.map(phase => (
-                    <option key={phase} value={phase}>
-                      {phase} ({formatChf(PHASE_PRICES[phase])})
-                    </option>
+                  {PHASE_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
               </div>
